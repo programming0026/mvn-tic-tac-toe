@@ -53,12 +53,24 @@ Complejidad: en el primer movimiento se exploran como máximo 9! posiciones; la 
 ```text
 src/main/java/com/juniverse/game/
 ├── Main.java
+├── model/
+│   ├── Board.java            # tablero 3x3 y reglas (victoria, empate)
+│   ├── MoveStrategy.java     # cómo elige su jugada la computadora
+│   └── MinimaxStrategy.java  # estrategia minimax: nunca pierde
 ├── gui/
-│   ├── GameFrame.java   # ventana, tablero e IA
+│   ├── GameFrame.java        # ventana y dibujo
 │   └── AboutDialog.java
-└── util/                # fechas, iconos y mensajes
+└── util/                     # fechas, iconos y mensajes
 src/main/resources/icons/ # x.png, o.png y main.png
 ```
+
+## Pruebas
+
+```bash
+mvn test
+```
+
+Una de las pruebas juega todas las partidas posibles del humano y comprueba que la computadora no pierde ninguna. Para añadir otra dificultad basta con otra implementación de `MoveStrategy`.
 
 ## Notas
 

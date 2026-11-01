@@ -1,5 +1,8 @@
 package com.juniverse.game.gui;
 
+import com.juniverse.game.model.Board;
+import com.juniverse.game.model.MinimaxStrategy;
+import com.juniverse.game.model.MoveStrategy;
 import com.juniverse.game.util.MessageUtil;
 import java.awt.AlphaComposite;
 import java.awt.Color;
@@ -24,42 +27,32 @@ import java.util.Optional;
 import javax.imageio.ImageIO;
 
 /**
- * The Class GameFrame.
- *
  * @author linux
  */
 public class GameFrame extends JFrame {
 
-    /** The Constant serialVersionUID. */
 	@Serial
     private static final long serialVersionUID = 1L;
 	
-	/** The Constant TITLE. */
 	private static final String TITLE = "Tic-tac-toe";
     
-    /** The Constant PLAYER_X. */
-    private static final char PLAYER_X = 'X';
-    
-    /** The Constant PLAYER_O. */
-    private static final char PLAYER_O = 'O';
-    
-    /** The Constant EMPTY. */
-    private static final char EMPTY = '\0';
+    private static final char PLAYER_X = Board.PLAYER_X;
 
-    /** The current player. */
+    private static final char PLAYER_O = Board.PLAYER_O;
+
+    /** Jugador en turno. */
     private char currentPlayer = PLAYER_X;
     
-    /** The board. */
-    private char[][] board = new char[3][3];
+    /** Tablero. */
+    private Board board = new Board();
+
+    /** Estrategia con la que la computadora elige su jugada. */
+    private final MoveStrategy computer = new MinimaxStrategy();
     
-    /** The game ended. */
     private boolean gameEnded = false;
     /** Imágenes ya leídas (X y O): se cargan una sola vez en lugar de en cada repintado. */
     private final Map<String, Optional<BufferedImage>> imageCache = new HashMap<>();
 
-    /**
-     * Instantiates a new game frame.
-     */
     public GameFrame() {
         setTitle(TITLE);
         setSize(600, 800);
@@ -120,19 +113,18 @@ public class GameFrame extends JFrame {
     }
 
     /**
-     * Play game.
+     * Realiza una jugada.
      *
-     * @param x the x
+     * @param x coordenada x
      * @param y the y
      */
     private void playGame(int x, int y) {
-        if (board[y][x] == EMPTY) {
-            board[y][x] = currentPlayer;
-            if (checkWin(currentPlayer)) {
+        if (board.mark(y, x, currentPlayer)) {
+            if (board.hasWon(currentPlayer)) {
                 gameEnded = true;
                 repaint();
                 MessageUtil.showInfo("Player " + currentPlayer + " wins!", TITLE);
-            } else if (boardFull()) {
+            } else if (board.isFull()) {
                 gameEnded = true;
                 repaint();
                 MessageUtil.showInfo("It's a tie!", TITLE);
@@ -147,20 +139,20 @@ public class GameFrame extends JFrame {
     }
 
     /**
-     * Reset game.
+     * Reinicia la partida.
      */
     private void resetGame() {
         currentPlayer = PLAYER_X;
-        board = new char[3][3];
+        board = new Board();
         gameEnded = false;
         repaint();
     }
 
     /**
-     * Load image.
+     * Carga la imagen.
      *
-     * @param fileName the file name
-     * @return the optional
+     * @param fileName nombre del archivo
+     * @return opcional
      */
     private Optional<BufferedImage> loadImage(String fileName) {
         return imageCache.computeIfAbsent(fileName, this::readImage);
@@ -181,7 +173,7 @@ public class GameFrame extends JFrame {
     }
 
     /**
-     * Draw board.
+     * Dibuja el tablero.
      *
      * @param g contexto gráfico
      * @param width ancho del panel en píxeles
@@ -214,7 +206,7 @@ public class GameFrame extends JFrame {
 
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
-                if (board[i][j] == PLAYER_X) {
+                if (board.get(i, j) == PLAYER_X) {
                     if (imgX.isPresent()) {
                         g2d.drawImage(imgX.get(), j * width / 3, i * height / 3, width / 3, height / 3, this);
                     } else {
@@ -222,7 +214,7 @@ public class GameFrame extends JFrame {
                         g2d.drawLine(j * width / 3, i * height / 3, (j + 1) * width / 3, (i + 1) * height / 3);
                         g2d.drawLine((j + 1) * width / 3, i * height / 3, j * width / 3, (i + 1) * height / 3);
                     }
-                } else if (board[i][j] == PLAYER_O) {
+                } else if (board.get(i, j) == PLAYER_O) {
                     if (imgO.isPresent()) {
                         g2d.drawImage(imgO.get(), j * width / 3, i * height / 3, width / 3, height / 3, this);
                     } else {
@@ -235,58 +227,21 @@ public class GameFrame extends JFrame {
     }
 
     /**
-     * Check win.
-     *
-     * @param player the player
-     * @return true, if successful
-     */
-    private boolean checkWin(char player) {
-        for (int i = 0; i < 3; i++) {
-            if (board[i][0] == player && board[i][1] == player && board[i][2] == player) {
-                return true;
-            }
-            if (board[0][i] == player && board[1][i] == player && board[2][i] == player) {
-                return true;
-            }
-        }
-        if (board[0][0] == player && board[1][1] == player && board[2][2] == player) {
-            return true;
-        }
-        return board[0][2] == player && board[1][1] == player && board[2][0] == player;
-    }
-
-    /**
-     * Board full.
-     *
-     * @return true, if successful
-     */
-    private boolean boardFull() {
-        for (char[] row : board) {
-            for (char cell : row) {
-                if (cell == EMPTY) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
-    /**
-     * Ai move.
+     * Calcula la jugada de la computadora.
      */
     private void aiMove() {
         if (gameEnded) {
             return;
         }
-        int[] bestMove = findBestMove();
+        int[] bestMove = computer.chooseMove(board);
         int x = bestMove[1];
         int y = bestMove[0];
-        board[y][x] = PLAYER_O;
+        board.mark(y, x, PLAYER_O);
         repaint(); // sin esto la jugada de la IA no se veía hasta el siguiente clic
-        if (checkWin(PLAYER_O)) {
+        if (board.hasWon(PLAYER_O)) {
             gameEnded = true;
             MessageUtil.showInfo("Player O wins!", TITLE);
-        } else if (boardFull()) {
+        } else if (board.isFull()) {
             gameEnded = true;
             MessageUtil.showInfo("It's a tie!", TITLE);
         } else {
@@ -295,101 +250,7 @@ public class GameFrame extends JFrame {
     }
 
     /**
-     * Find best move.
-     *
-     * @return the int[]
-     */
-    private int[] findBestMove() {
-        int bestValue = Integer.MIN_VALUE;
-        int[] bestMove = new int[2];
-
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++) {
-                if (board[i][j] == EMPTY) {
-                    board[i][j] = PLAYER_O;
-                    int moveValue = minimax(0, false);
-                    board[i][j] = EMPTY;
-                    if (moveValue > bestValue) {
-                        bestMove[0] = i;
-                        bestMove[1] = j;
-                        bestValue = moveValue;
-                    }
-                }
-            }
-        }
-
-        return bestMove;
-    }
-
-    /**
-     * Minimax.
-     *
-     * @param depth the depth
-     * @param isMax the is max
-     * @return the int
-     */
-    private int minimax(int depth, boolean isMax) {
-        if (checkWin(PLAYER_O)) {
-            return 10 - depth;
-        }
-        if (checkWin(PLAYER_X)) {
-            return depth - 10;
-        }
-        if (boardFull()) {
-            return 0;
-        }
-
-        if (isMax) {
-            return getMax(depth);
-        } else {
-            return getMin(depth);
-        }
-    }
-
-    /**
-     * Gets the min.
-     *
-     * @param depth the depth
-     * @return the min
-     */
-    private int getMin(int depth) {
-        int best = Integer.MAX_VALUE;
-
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++) {
-                if (board[i][j] == EMPTY) {
-                    board[i][j] = PLAYER_X;
-                    best = Math.min(best, minimax(depth + 1, true));
-                    board[i][j] = EMPTY;
-                }
-            }
-        }
-        return best;
-    }
-
-    /**
-     * Gets the max.
-     *
-     * @param depth the depth
-     * @return the max
-     */
-    private int getMax(int depth) {
-        int best = Integer.MIN_VALUE;
-
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++) {
-                if (board[i][j] == EMPTY) {
-                    board[i][j] = PLAYER_O;
-                    best = Math.max(best, minimax(depth + 1, false));
-                    board[i][j] = EMPTY;
-                }
-            }
-        }
-        return best;
-    }
-
-    /**
-     * About.
+     * Muestra el cuadro «Acerca de».
      */
     private void about() {
         AboutDialog aboutDialog = new AboutDialog(this);
