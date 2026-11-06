@@ -27,7 +27,7 @@ import java.util.Optional;
 import javax.imageio.ImageIO;
 
 /**
- * @author linux
+ * @author Java Universe
  */
 public class GameFrame extends JFrame {
 

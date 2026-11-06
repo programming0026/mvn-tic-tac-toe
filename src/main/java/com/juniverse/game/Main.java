@@ -5,7 +5,7 @@ import com.formdev.flatlaf.themes.FlatMacDarkLaf;
 import javax.swing.SwingUtilities;
 
 /**
- * @author linux
+ * @author Java Universe
  */
 public class Main {
 
